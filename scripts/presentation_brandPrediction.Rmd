@@ -18,7 +18,7 @@ if(require(pacman) == FALSE){
   install.packages("pacman")
 }
 
-pacman::p_load(knitr, kableExtra)
+pacman::p_load(knitr, kableExtra, gridExtra)
 ```
 
 ## Defining the problem {.smaller}
@@ -106,27 +106,23 @@ round(prop.table(table(completed_survey$brand_name, dnn = c("Brand"))),2)
 library(caret)
 set.seed(2019)
 
-# train and test creation
+# train and test
 train_ids <- createDataPartition(y = completed_survey$brand,
                                  p = 0.75,
                                  list = F)
 train <- completed_survey[train_ids,]
 test <- completed_survey[-train_ids,]
 
-# cross validation creation
+# cross validation
 ctrl <- trainControl(method = "repeatedcv",
                      repeats = 5,
-                     number = 2)
+                     number = 3)
 
 # Creating the model with caret and using the model rpart
 mod_caret_dt <- caret::train(brand_name ~ .,
                              data = train %>% dplyr::select(-brand),
                              method = "rpart",
                              trControl = ctrl)
-
-# Checking the metrics on the testing
-test_results <- predict(object = mod_caret_dt, 
-                        newdata = test)
 ```
 
 ## 1st error check: Accuracy and kappa
@@ -180,30 +176,6 @@ round(prop.table(confusionMatrix(train$brand_name, train_results)$table),2)
 round(prop.table(confusionMatrix(test$brand_name, test_results)$table),2)
 ```
 
-## 1st error check: ROC curve
-
-Use a ROC curve to assess the model performance. *"It tells how much model is capable of distinguishing between classes. Higher the AUC, better the model is at predicting 0s as 0s and 1s as 1s."*$^1$ 
-
-```{r echo=T, message=T, warning=T}
-test_results_prob <- predict(mod_caret_dt, 
-                             newdata = test,
-                             type = "prob")
-kable(head(test_results_prob, 5), format = "markdown")
-```
-
-## 1st error check: ROC curve plot
-
-```{r echo=T, message=F, warning=FALSE, fig.align="center", fig.height=3.5, fig.width=5}
-library(ROCR)
-pred_roc <- ROCR::prediction(test_results_prob[,2], 
-                             test["brand_name"])
-perf <- performance(pred_roc, "tpr", "fpr")
-plot(perf, main = "ROC curve")
-abline(0,1, col = "red")
-```
-
-AUC (Area Under The Curve) ROC (Receiver Operating Characteristics)
-
 ## 2nd exploration
 
 Looking for the relation between the important variable and brand. **Goal** create a model that is not overfitted to the data:
@@ -229,22 +201,180 @@ mod_caret_dt_subs <- caret::train(brand_name ~ salary + age,
 ### Results on train
 
 ```{r echo=TRUE}
-train_results <- predict(object = mod_caret_dt_subs, 
-                         newdata = train)
-postResample(train$brand_name, train_results)
+train_results_2ndmod <- predict(object = mod_caret_dt_subs, 
+                                newdata = train)
+postResample(train$brand_name, train_results_2ndmod)
 ```
 
 ### Results on test 
 
 ```{r echo=TRUE}
-test_results <- predict(object = mod_caret_dt_subs, 
-                        newdata = test)
-postResample(test$brand_name, test_results)
+test_results_2ndmod <- predict(object = mod_caret_dt_subs, 
+                               newdata = test)
+postResample(test$brand_name, test_results_2ndmod)
 ```
 
+## 2nd error check: confusion matrix
 
-## Bibliography 
+We are going to compare the confusion matrix for the first model (all the variables) and the model with salary and age:
 
-####  AUC - ROC Curve
+### Rpart model with all the variables
 
-$^1$<https://towardsdatascience.com/understanding-auc-roc-curve-68b2303cc9c5>
+```{r echo=T}
+
+round(prop.table(confusionMatrix(test$brand_name, test_results)$table),2)
+```
+
+### Rpart model with only salary and age
+
+```{r echo=T}
+round(prop.table(confusionMatrix(test$brand_name, test_results_2ndmod)$table),2)
+```
+
+## 2nd error check: visualization of the errors
+
+```{r fig.align="center", fig.width = 10}
+test$pred1_brand_name <- test_results
+test$pred2_brand_name <- test_results_2ndmod
+
+plot1 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = (brand_name != pred1_brand_name))) +
+    labs(title = "Rpart model error with all variables") +
+    scale_color_manual(values = c("white","red")) +
+    theme(legend.position="none")
+
+plot2 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = (brand_name != pred2_brand_name))) +
+    labs(title = "Rpart model error with only salary and age") +
+    scale_color_manual(values = c("white","red")) +
+    theme(legend.position="none")
+
+library(gridExtra)
+grid.arrange(plot1, plot2, nrow = 1)
+```
+
+## 3rd modalization
+
+Creation of the model with **KNN**
+
+```{r echo=T}
+# Creating the model with caret and using the model rpart
+mod_caret_knn_subs <- caret::train(brand_name ~ salary + age,
+                                   data = train %>% dplyr::select(-brand),
+                                   method = "knn",
+                                   trControl = ctrl,
+                                   preProcess = c("center","scale")) 
+```
+
+## 3rd error check: train and test metrics
+
+### Results on train
+
+```{r echo=TRUE}
+train_results_3rdmod <- predict(object = mod_caret_knn_subs, 
+                                newdata = train)
+postResample(train$brand_name, train_results_3rdmod)
+```
+
+### Results on test 
+
+```{r echo=TRUE}
+test_results_3rdmod <- predict(object = mod_caret_knn_subs, 
+                                 newdata = test)
+postResample(test$brand_name, test_results_3rdmod)
+```
+
+## 3rd error check: confusion matrix
+
+### rpart model with only salary and age
+
+```{r echo=T}
+round(prop.table(confusionMatrix(test$brand_name, test_results_2ndmod)$table),2)
+```
+
+### knn model with only salary and age
+
+```{r echo=T}
+round(prop.table(confusionMatrix(test$brand_name, test_results_3rdmod)$table),2)
+```
+
+## 3rd error check: visualization of the errors
+
+```{r fig.align="center", fig.width = 10}
+test$pred3_brand_name <- test_results_3rdmod
+
+plot3 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = (brand_name != pred3_brand_name))) +
+    labs(title = "Knn model error with only salary and age") +
+    scale_color_manual(values = c("white","red")) +
+    theme(legend.position="none")
+
+library(gridExtra)
+grid.arrange(plot2, plot3, nrow = 1)
+```
+
+## 4rth modalisation: trying SVM algorithm
+
+```{r echo=T, message=F, warning=F}
+library(e1071)
+mod_svm <- svm(brand_name ~ salary + age, 
+               data = train)
+```
+
+### Results on train 
+
+```{r echo=TRUE}
+train_results_4rthmod <- predict(object = mod_svm, 
+                                newdata = train)
+postResample(train$brand_name, train_results_4rthmod)
+```
+
+### Results on test 
+
+```{r echo=TRUE}
+test_results_4rthmod <- predict(object = mod_svm, 
+                                newdata = test)
+postResample(test$brand_name, test_results_4rthmod)
+```
+
+## 4rth error check: confusion matrix
+
+### KNN model with only salary and age
+
+```{r echo=T}
+# rpart model with only salary and age
+round(prop.table(confusionMatrix(test$brand_name, test_results_3rdmod)$table),3)
+```
+
+### SVM model with only salary and age
+
+```{r echo=T}
+# rpart model with only salary and age
+round(prop.table(confusionMatrix(test$brand_name, test_results_4rthmod)$table),3)
+```
+
+## 4rth error check: error visualization
+
+```{r fig.align="center", fig.width = 10}
+test$pred4_brand_name <- test_results_4rthmod
+
+plot4 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = (brand_name != pred4_brand_name))) +
+    labs(title = "SVM model error with only salary and age") +
+    scale_color_manual(values = c("white","red")) +
+    theme(legend.position="none")
+
+library(gridExtra)
+grid.arrange(plot3, plot4, nrow = 1)
+```
+
+## Extra: support lines plot for SVM
+
+```{r fig.align="center", fig.height=5}
+plot(mod_svm, data = test, salary ~ age)
+```
+
