@@ -153,8 +153,8 @@ glimpse(completed_survey)</pre>
 <p>Let&#39;s put the brand information in a nicer way:</p>
 
 <pre class = 'prettyprint lang-r'># transform the survey result to names
-completed_survey$brand_name &lt;- apply(completed_survey[&quot;brand&quot;,drop=F],
-                                     MARGIN = 1,
+completed_survey$brand_name &lt;- apply(completed_survey[&quot;brand&quot;],
+                                     MARGIN = 2,
                                      function(x) if_else(x == 0, &quot;Acer&quot;, &quot;Sony&quot;))</pre>
 
 <table class = 'rmdtable'>
@@ -252,8 +252,8 @@ glimpse(completed_survey)</pre>
 ## $ brand_name &lt;fct&gt; Acer, Sony, Acer, Sony, Acer, Sony, Sony, Sony, Ace...</pre>
 
 <pre class = 'prettyprint lang-r'># We can apply the same process to the incomplete survey
-incompleted_survey$brand_name &lt;- apply(incompleted_survey[&quot;brand&quot;,drop=F],
-                                       MARGIN = 1,
+incompleted_survey$brand_name &lt;- apply(incompleted_survey[&quot;brand&quot;],
+                                       MARGIN = 2,
                                        function(x) if_else(x == 0, &quot;Acer&quot;, &quot;Sony&quot;))
 incompleted_survey[categ_var] &lt;- lapply(incompleted_survey[categ_var], as.factor)</pre>
 

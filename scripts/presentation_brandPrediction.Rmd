@@ -54,8 +54,8 @@ Let's put the brand information in a nicer way:
 
 ```{r echo=T, message=F, warning=FALSE}
 # transform the survey result to names
-completed_survey$brand_name <- apply(completed_survey["brand",drop=F],
-                                     MARGIN = 1,
+completed_survey$brand_name <- apply(completed_survey["brand"],
+                                     MARGIN = 2,
                                      function(x) if_else(x == 0, "Acer", "Sony"))
 ```
 
@@ -78,8 +78,8 @@ glimpse(completed_survey)
 
 ```{r warning=FALSE, echo=TRUE}
 # We can apply the same process to the incomplete survey
-incompleted_survey$brand_name <- apply(incompleted_survey["brand",drop=F],
-                                       MARGIN = 1,
+incompleted_survey$brand_name <- apply(incompleted_survey["brand"],
+                                       MARGIN = 2,
                                        function(x) if_else(x == 0, "Acer", "Sony"))
 incompleted_survey[categ_var] <- lapply(incompleted_survey[categ_var], as.factor)
 ```
