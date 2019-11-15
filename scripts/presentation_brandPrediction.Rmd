@@ -10,7 +10,7 @@ output:
 ---
 
 ```{r setup, include=FALSE, message=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, fig.align="center")
 
 
 # libraries to use
@@ -155,10 +155,12 @@ plot_importance <- temp %>%
   filter(var_importance > 0) %>%
   ggplot() + geom_col(aes(x = reorder(var_name, desc(-var_importance)), 
                           y = var_importance), fill = "red", width = 0.5) + 
-    coord_flip() + theme_bw() + 
+    coord_flip() + 
+    theme_bw() + 
     labs(title = "Importance of the variables in the model",
          y = "Importance")
-plot_importance + theme(axis.title.y = element_blank())
+plot_importance + 
+  theme(axis.title.y = element_blank())
 ```
 
 ## 1st error check: confusion matrix
@@ -255,6 +257,33 @@ library(gridExtra)
 grid.arrange(plot1, plot2, nrow = 1)
 ```
 
+## Model probabilities for Acer
+
+```{r fig.width = 10}
+test$pred1_brand_name <- predict(mod_caret_dt, newdata = test, type = "prob")$Acer
+test$pred2_brand_name <- predict(mod_caret_dt_subs, newdata = test, type = "prob")$Acer
+
+p_plot1 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = pred1_brand_name)) +
+    labs(title = "Rpart model error with all variables") +
+    scale_colour_gradient2() +
+    theme(legend.position="bottom",
+          legend.title = element_blank())
+
+p_plot2 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = pred2_brand_name)) +
+    scale_colour_gradient2() +
+    labs(title = "Rpart model error with only salary and age") +
+    theme(legend.position="bottom",
+          legend.title = element_blank())
+
+library(gridExtra)
+grid.arrange(p_plot1, p_plot2, nrow = 1)
+```
+
+
 ## 3rd modalization
 
 Creation of the model with **KNN**
@@ -316,6 +345,24 @@ library(gridExtra)
 grid.arrange(plot2, plot3, nrow = 1)
 ```
 
+## Prob to be Acer
+
+```{r fig.width = 10}
+test$pred3_brand_name <- predict(object = mod_caret_knn_subs, newdata = test, type = "prob")$Acer
+
+p_plot3 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = pred3_brand_name)) +
+    scale_colour_gradient2() +
+    labs(title = "Knn model error with only salary and age") +
+    theme(legend.position="bottom",
+          legend.title = element_blank())
+
+library(gridExtra)
+grid.arrange(p_plot2, p_plot3, nrow = 1)
+```
+
+
 ## 4rth modalisation: trying SVM algorithm
 
 ```{r echo=T, message=F, warning=F}
@@ -323,6 +370,16 @@ library(e1071)
 mod_svm <- svm(brand_name ~ salary + age, 
                data = train)
 ```
+
+```{r echo=FALSE}
+# Creating the model with caret and using the model rpart
+mod_caret_svm_subs <- caret::train(brand_name ~ salary + age,
+                                   data = train %>% dplyr::select(-brand),
+                                   method = "svmRadial",
+                                   trControl = ctrl,
+                                   preProcess = c("center","scale")) 
+```
+
 
 ### Results on train 
 
@@ -370,6 +427,23 @@ plot4 <- test %>%
 
 library(gridExtra)
 grid.arrange(plot3, plot4, nrow = 1)
+```
+
+## Probability to be Acer
+
+```{r fig.align="center", fig.width = 10}
+test$pred4_brand_name <- predict(object = mod_caret_svm_subs, newdata = test, type = "raw")
+
+p_plot4 <- test %>% 
+  ggplot(aes(x = age, y = salary)) +
+    geom_point(aes(color = pred4_brand_name)) +
+
+    labs(title = "SVM model error with only salary and age") +
+    scale_color_manual(values = c("royalblue4", "white")) +
+    theme(legend.position="none")
+
+library(gridExtra)
+grid.arrange(p_plot3, p_plot4, nrow = 1)
 ```
 
 ## Extra: support lines plot for SVM
