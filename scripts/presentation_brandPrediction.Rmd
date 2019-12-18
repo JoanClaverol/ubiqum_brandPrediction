@@ -257,7 +257,7 @@ library(gridExtra)
 grid.arrange(plot1, plot2, nrow = 1)
 ```
 
-## Model probabilities for Acer
+## Probability to be Acer
 
 ```{r fig.width = 10}
 test$pred1_brand_name <- predict(mod_caret_dt, newdata = test, type = "prob")$Acer
@@ -345,7 +345,7 @@ library(gridExtra)
 grid.arrange(plot2, plot3, nrow = 1)
 ```
 
-## Prob to be Acer
+## Probability to be Acer
 
 ```{r fig.width = 10}
 test$pred3_brand_name <- predict(object = mod_caret_knn_subs, newdata = test, type = "prob")$Acer
@@ -376,7 +376,10 @@ mod_svm <- svm(brand_name ~ salary + age,
 mod_caret_svm_subs <- caret::train(brand_name ~ salary + age,
                                    data = train %>% dplyr::select(-brand),
                                    method = "svmRadial",
-                                   trControl = ctrl,
+                                   trControl = trainControl(method = "repeatedcv",
+                                                           repeats = 5,
+                                                           number = 3, 
+                                                           classProbs = T),
                                    preProcess = c("center","scale")) 
 ```
 
@@ -432,15 +435,15 @@ grid.arrange(plot3, plot4, nrow = 1)
 ## Probability to be Acer
 
 ```{r fig.align="center", fig.width = 10}
-test$pred4_brand_name <- predict(object = mod_caret_svm_subs, newdata = test, type = "raw")
+test$pred4_brand_name  <- predict(object = mod_caret_svm_subs, newdata = test, type = "prob")$Acer
 
 p_plot4 <- test %>% 
   ggplot(aes(x = age, y = salary)) +
     geom_point(aes(color = pred4_brand_name)) +
-
     labs(title = "SVM model error with only salary and age") +
-    scale_color_manual(values = c("royalblue4", "white")) +
-    theme(legend.position="none")
+    scale_colour_gradient2() +
+    theme(legend.position="bottom", 
+          legend.title = element_blank())
 
 library(gridExtra)
 grid.arrange(p_plot3, p_plot4, nrow = 1)
